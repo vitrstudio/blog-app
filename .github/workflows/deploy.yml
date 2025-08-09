@@ -1,0 +1,43 @@
+name: Deploy to S3
+
+on:
+  # Remove comment to auto-run on every push to main
+  # push:
+  #   branches: [main]
+  workflow_dispatch:  # manual trigger only
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 21.5.0
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Create .env file with dynamic API URL
+        run: echo "VITE_API_URL=XXX" > .env # Replace XXX with the actual API URL
+
+      - name: Build
+        run: npm run build
+
+      - name: Sync to S3
+        run: aws s3 sync ./dist s3://XXX --delete # Replace XXX with the actual S3 bucket name
+
+      - name: Invalidate cloudfront cache
+        run: | # Input the actual cloudfront distribution ID
+          DISTRIBUTION_ID=$(aws ssm get-parameter --name "/seed/static_website_cloudfront_id" --query "Parameter.Value" --output text)
+          aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*"
