@@ -29,15 +29,15 @@ jobs:
           aws-region: us-east-1
 
       - name: Create .env file with dynamic API URL
-        run: echo "VITE_API_URL=XXX" > .env # Replace XXX with the actual API URL
+        run: echo "VITE_API_URL=https://api.blog.vitr.studio" > .env
 
       - name: Build
         run: npm run build
 
       - name: Sync to S3
-        run: aws s3 sync ./dist s3://XXX --delete # Replace XXX with the actual S3 bucket name
+        run: aws s3 sync ./dist s3://blog-app-a2649dd0 --delete
 
       - name: Invalidate cloudfront cache
-        run: | # Input the actual cloudfront distribution ID
-          DISTRIBUTION_ID=$(aws ssm get-parameter --name "/seed/static_website_cloudfront_id" --query "Parameter.Value" --output text)
+        run: |
+          DISTRIBUTION_ID=$(aws ssm get-parameter --name "/blog/static_website_cloudfront_id" --query "Parameter.Value" --output text)
           aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*"
